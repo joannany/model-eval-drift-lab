@@ -1,7 +1,5 @@
 # model-eval-drift-lab
 
-![Run Notebooks](https://github.com/joannany/model-eval-drift-lab/actions/workflows/run-notebooks.yml/badge.svg)
-
 **Tools for catching ML models before they fail silently in production.**
 
 Production models degrade. Your validation accuracy tells you nothing about what happens when:
