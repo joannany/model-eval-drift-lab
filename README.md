@@ -174,3 +174,17 @@ And **hope is not a strategy**.
 ## 📄 License
 
 MIT
+
+## Citation
+
+If you use this package in academic or applied research, please cite:
+
+```bibtex
+@software{model_eval_drift_lab,
+  title={model-eval-drift-lab: Tools for Detecting Distribution Drift in Deployed ML Systems},
+  author={Jo, Anna},
+  year={2025},
+  url={https://github.com/joannany/model-eval-drift-lab}
+}
+```
+
