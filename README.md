@@ -1,22 +1,29 @@
 # model-eval-drift-lab
 
-**Tools for catching ML models before they fail silently in production.**
+**Lightweight, practical tools for detecting when ML models begin to fail silently in production.**
 
-Production models degrade. Your validation accuracy tells you nothing about what happens when:
+Validation accuracy only reflects your training and validation distribution.  
+Real-world systems drift — sometimes slowly, sometimes suddenly — due to:
 
-- patient demographics shift,
-- imaging equipment is recalibrated,
-- input pipelines change, or
-- user behavior drifts over months.
+- demographic shifts in users or patients,
+- changes in acquisition hardware or sensor calibration,
+- upstream pipeline modifications,
+- seasonal or behavioral changes,
+- long-term distribution shift that accumulates unnoticed.
 
-I built this toolkit while working on deployed cancer detection systems, where noticing a 1–2% performance drop early can meaningfully affect clinical outcomes. These are the exact drift-detection and evaluation utilities I used in production — no heavy frameworks, no unnecessary abstractions.
+This toolkit contains the exact drift-detection and evaluation utilities I built for real deployed medical AI systems, where catching a **1–2% performance decline early** can meaningfully affect clinical outcomes.
+
+No heavy frameworks. No unnecessary abstractions.  
+Just reliable, interpretable, production-ready tools.
 
 ---
 
-## Quickstart
+## 🚀 Quickstart
+
 ```bash
 git clone https://github.com/joannany/model-eval-drift-lab.git
 cd model-eval-drift-lab
+
 pip install -r requirements.txt
 
 # Run drift detection demo
@@ -25,7 +32,8 @@ python -m drift_detection.demo
 
 ---
 
-## Repository Structure
+## 📁 Repository Structure
+
 ```
 model-eval-drift-lab/
 ├── README.md
@@ -34,17 +42,17 @@ model-eval-drift-lab/
 │
 ├── drift_detection/
 │   ├── __init__.py
-│   ├── ks_test.py              # Kolmogorov–Smirnov test (univariate shift)
+│   ├── ks_test.py              # Kolmogorov–Smirnov (univariate shift)
 │   ├── psi.py                  # Population Stability Index
-│   ├── mmd.py                  # Maximum Mean Discrepancy (multivariate shift)
-│   ├── utils.py                # Validation helpers, drift reporting
-│   └── demo.py                 # End-to-end drift detection scenarios
+│   ├── mmd.py                  # Maximum Mean Discrepancy (multi-dimensional)
+│   ├── utils.py                # Helpers for drift scoring + reporting
+│   └── demo.py                 # End-to-end drift detection examples
 │
 ├── evaluation/
 │   ├── __init__.py
-│   ├── calibration.py          # Reliability diagrams, ECE/MCE
-│   ├── threshold.py            # Operating-point selection for high-stakes domains
-│   └── subgroup_analysis.py    # Demographic / FDA-required subgroup evaluations
+│   ├── calibration.py          # ECE, MCE, reliability diagrams
+│   ├── threshold.py            # Operating point selection in high-risk settings
+│   └── subgroup_analysis.py    # Demographic / fairness / FDA subgroup evaluation
 │
 ├── notebooks/
 │   ├── 01_covariate_shift.ipynb
@@ -57,77 +65,112 @@ model-eval-drift-lab/
 
 ---
 
-## Drift Detection Tools
+## 🔎 Drift Detection Tools
 
-### KS Test (Kolmogorov–Smirnov)
+### 1. **Kolmogorov–Smirnov Test (KS Test)**  
+Univariate distribution comparison.
 
-Univariate distribution comparison.  
-✔ Fast  ✔ Interpretable  ✖ Misses correlated / high-dimensional changes
+- ✔ Fast  
+- ✔ Easy to interpret  
+- ✖ Does not detect correlated or multi-dimensional drift  
 
-### PSI (Population Stability Index)
-
-Industry standard in credit scoring and regulated risk modeling.
-
-- PSI < 0.1 → stable
-- PSI 0.1–0.2 → moderate drift (investigate)
-- PSI > 0.2 → significant drift (take action)
-
-### MMD (Maximum Mean Discrepancy)
-
-Kernel-based distribution comparison. Detects multivariate or correlation drift that per-feature tests miss.
-
-If your dataset is high-dimensional or structured (embeddings, images), MMD is essential.
+Useful for monitoring single scalar signals (confidence scores, model logits, per-feature distributions).
 
 ---
 
-## Model Evaluation Tools
+### 2. **Population Stability Index (PSI)**  
+Widely used in regulated industries (finance, credit scoring).
 
-### Calibration Analysis (ECE, MCE)
+Interpretation:
 
-Ensures predicted probabilities reflect empirical outcomes — crucial for clinical use and decision support.
+| PSI Value | Meaning |
+|----------|---------|
+| < 0.1 | Stable distribution |
+| 0.1–0.2 | Moderate drift — investigate |
+| > 0.2 | Significant drift — take action |
 
-### Threshold Optimization
+Good for **monitoring categorical or histogram-based features** where scale is known.
+
+---
+
+### 3. **Maximum Mean Discrepancy (MMD)**  
+Kernel-based method for multi-dimensional drift.
+
+- Detects changes that KS/PSI miss  
+- Effective for **embeddings**, **feature vectors**, **representations**, or any high-dimensional data  
+- Works without assumptions about the distribution  
+
+If your model uses embeddings or structured features, MMD should be part of your monitoring pipeline.
+
+---
+
+## 📊 Model Evaluation Tools
+
+### **Calibration Analysis (ECE, MCE)**  
+Reliability matters — especially in medicine, safety systems, and regulated environments.
+
+This module computes:
+
+- **ECE (Expected Calibration Error)**  
+- **MCE (Maximum Calibration Error)**  
+- **Reliability diagrams**
+
+Useful when model confidence is used downstream for clinical decisions or triaging.
+
+---
+
+### **Threshold Optimization**  
+Helpful for:
+
+- Highly imbalanced datasets  
+- Screening workflows  
+- Regulatory submissions  
+- Risk-weighted decision systems  
 
 Supports:
 
-- Youden's J
-- Sensitivity-constrained thresholds
-- Specificity-constrained thresholds
-- F1 / cost-weighted optimization
-
-Useful for screening programs and asymmetric risk environments.
-
-### Subgroup Performance Analysis
-
-Breaks down metrics by:
-
-- age group
-- sex
-- any demographic label
-
-Used for:
-
-- FDA submissions
-- fairness audits
-- post-market surveillance
+- **Youden’s J statistic**  
+- **Sensitivity-constrained thresholds**  
+- **Specificity-constrained thresholds**  
+- **F1 / cost-sensitive optimization**
 
 ---
 
-## Why This Repo Exists
+### **Subgroup Performance Analysis**  
+Splits evaluation metrics across:
 
-Deployed ML systems do not operate in the same environment they were trained in.
+- age  
+- sex  
+- any demographic label  
 
-- Small shifts compound over time.
-- Model behavior changes long before anyone notices.
-- Traditional metrics give a false sense of safety.
-- Regulators (FDA, MDR) increasingly require continuous monitoring.
+Frequently required for:
 
-This repository reflects the practical, reliable toolkit I built to detect these issues early.
-
-If you're not monitoring for drift, you're hoping — and hope is not a strategy.
+- FDA submissions  
+- post-market surveillance  
+- fairness audits  
+- longitudinal monitoring  
 
 ---
 
-## License
+## 💡 Why This Repo Exists
+
+Machine learning systems rarely fail catastrophically all at once.  
+They fail **quietly**, **slowly**, and **silently** — until someone finally notices.
+
+Some truths:
+
+- Data shifts constantly — even in controlled environments.  
+- A small shift in feature distribution can cascade into measurable performance decline.  
+- Most teams rely solely on validation metrics, which do not reflect real-world data.  
+- Regulators increasingly mandate continuous monitoring (FDA, MDR, ISO 13485).  
+
+This repository represents a **practical, field-tested toolkit** for detecting these issues early — before they impact users or clinical outcomes.
+
+If you're not monitoring for drift, you're relying on hope.  
+And **hope is not a strategy**.
+
+---
+
+## 📄 License
 
 MIT
