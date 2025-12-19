@@ -11,7 +11,7 @@ Real-world systems drift — sometimes slowly, sometimes suddenly — due to:
 - seasonal or behavioral changes,
 - long-term distribution shift that accumulates unnoticed.
 
-This toolkit contains the exact drift-detection and evaluation utilities I built for real deployed medical AI systems, where catching a **1–2% performance decline early** can meaningfully affect clinical outcomes.
+This toolkit reflects drift-detection and evaluation utilities developed and used in real-world medical AI deployments, where catching a **1–2% performance decline early** can meaningfully affect clinical outcomes.
 
 No heavy frameworks. No unnecessary abstractions.  
 Just reliable, interpretable, production-ready tools.
@@ -87,7 +87,7 @@ Interpretation:
 |----------|---------|
 | < 0.1 | Stable distribution |
 | 0.1–0.2 | Moderate drift — investigate |
-| > 0.2 | Significant drift — take action |
+| > 0.2 | Significant drift — investigate and consider action |
 
 Good for **monitoring categorical or histogram-based features** where scale is known.
 
@@ -164,7 +164,7 @@ Some truths:
 - Most teams rely solely on validation metrics, which do not reflect real-world data.  
 - Regulators increasingly mandate continuous monitoring (FDA, MDR, ISO 13485).  
 
-This repository represents a **practical, field-tested toolkit** for detecting these issues early — before they impact users or clinical outcomes.
+These tools surface statistical signals of distributional change; they do not prescribe automated enforcement or decision-making.
 
 If you're not monitoring for drift, you're relying on hope.  
 And **hope is not a strategy**.
