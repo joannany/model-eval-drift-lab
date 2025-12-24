@@ -5,9 +5,11 @@ Statistical methods for detecting when production data
 no longer matches your training distribution.
 """
 
-from .ks_test import KSTest
-from .psi import PSI
-from .mmd import MMD
+__version__ = "0.1.0"
+
+from .ks_test import KSTest, KSResult
+from .psi import PSI, PSIResult
+from .mmd import MMD, MMDResult
 from .utils import (
     DriftReport,
     validate_inputs,
@@ -16,9 +18,13 @@ from .utils import (
 )
 
 __all__ = [
+    "__version__",
     "KSTest",
+    "KSResult",
     "PSI",
+    "PSIResult",
     "MMD",
+    "MMDResult",
     "DriftReport",
     "validate_inputs",
     "bootstrap_confidence_interval",
