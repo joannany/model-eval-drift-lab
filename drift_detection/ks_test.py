@@ -9,7 +9,9 @@ Bad for: High-dimensional data, subtle shifts.
 import numpy as np
 from scipy.stats import ks_2samp
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
+
+from .utils import validate_inputs
 
 
 @dataclass
@@ -20,8 +22,8 @@ class KSResult:
     drift_detected: bool
     threshold: float
     
-    def __repr__(self):
-        status = "🔴 DRIFT" if self.drift_detected else "🟢 STABLE"
+    def __repr__(self) -> str:
+        status = "[DRIFT]" if self.drift_detected else "[STABLE]"
         return (
             f"KSResult({status})\n"
             f"  statistic: {self.statistic:.4f}\n"
@@ -43,9 +45,15 @@ class KSTest:
         >>> current = np.random.normal(0.5, 1, 1000)  # shifted!
         >>> result = detector.detect(reference, current)
         >>> print(result)
+        KSResult([DRIFT])
+          statistic: 0.1820
+          p_value:   2.1e-15
+          threshold: 0.05
     """
     
-    def __init__(self, alpha: float = 0.05):
+    def __init__(self, alpha: float = 0.05) -> None:
+        if not 0 < alpha < 1:
+            raise ValueError("alpha must be in (0, 1)")
         self.alpha = alpha
     
     def detect(
@@ -54,15 +62,28 @@ class KSTest:
         current: np.ndarray,
         feature_name: Optional[str] = None
     ) -> KSResult:
-        reference = np.asarray(reference).flatten()
-        current = np.asarray(current).flatten()
+        """
+        Perform KS test on two samples.
+        
+        Args:
+            reference: Reference (training) distribution samples
+            current: Current (production) distribution samples
+            feature_name: Optional name for reporting
+            
+        Returns:
+            KSResult with test statistic, p-value, and drift detection flag
+        """
+        reference, current = validate_inputs(reference, current, min_samples=2)
+        
+        reference = reference.flatten()
+        current = current.flatten()
         
         statistic, p_value = ks_2samp(reference, current)
         drift_detected = p_value < self.alpha
         
         return KSResult(
-            statistic=statistic,
-            p_value=p_value,
+            statistic=float(statistic),
+            p_value=float(p_value),
             drift_detected=drift_detected,
             threshold=self.alpha
         )
@@ -72,7 +93,18 @@ class KSTest:
         reference: np.ndarray, 
         current: np.ndarray,
         feature_names: Optional[list] = None
-    ) -> dict:
+    ) -> Dict[str, KSResult]:
+        """
+        Apply KS test to each feature independently.
+        
+        Args:
+            reference: Reference data (n_samples, n_features)
+            current: Current data (n_samples, n_features)
+            feature_names: Optional list of feature names
+            
+        Returns:
+            Dict mapping feature names to KSResult objects
+        """
         reference = np.asarray(reference)
         current = np.asarray(current)
         
@@ -84,6 +116,9 @@ class KSTest:
         
         if feature_names is None:
             feature_names = [f"feature_{i}" for i in range(n_features)]
+        
+        if len(feature_names) != n_features:
+            raise ValueError(f"Expected {n_features} feature names, got {len(feature_names)}")
         
         results = {}
         for i, name in enumerate(feature_names):
