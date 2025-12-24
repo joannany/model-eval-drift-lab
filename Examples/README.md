@@ -6,7 +6,7 @@ These artifacts illustrate what the monitoring and evaluation tools look like wh
 
 ---
 
-## 📈 Included Examples
+## Included Examples
 
 ### `drift_dashboard.png`
 
@@ -33,9 +33,10 @@ Generated from `02_threshold_selection.ipynb` or `calibration.py`.
 
 ---
 
-## 🔧 Reproducing These Outputs
+## Reproducing These Outputs
 
 To regenerate all example figures:
+
 ```bash
 cd notebooks
 jupyter notebook
