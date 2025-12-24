@@ -15,6 +15,8 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Optional, Literal
 
+from .utils import validate_inputs
+
 
 @dataclass
 class MMDResult:
@@ -25,14 +27,14 @@ class MMDResult:
     drift_detected: bool
     threshold: float
     
-    def __repr__(self):
-        status = "🔴 DRIFT" if self.drift_detected else "🟢 STABLE"
+    def __repr__(self) -> str:
+        status = "[DRIFT]" if self.drift_detected else "[STABLE]"
         p_str = f"{self.p_value:.4f}" if self.p_value is not None else "N/A"
         return (
             f"MMDResult({status})\n"
-            f"  mmd:     {self.mmd:.4f}\n"
-            f"  mmd²:    {self.mmd_squared:.6f}\n"
-            f"  p_value: {p_str}\n"
+            f"  mmd:       {self.mmd:.4f}\n"
+            f"  mmd_sq:    {self.mmd_squared:.6f}\n"
+            f"  p_value:   {p_str}\n"
             f"  threshold: {self.threshold}"
         )
 
@@ -41,44 +43,65 @@ class MMD:
     """
     Maximum Mean Discrepancy for distribution comparison.
     
-    Uses RBF (Gaussian) kernel by default.
+    Uses RBF (Gaussian) kernel by default with median heuristic for bandwidth.
     
     Example:
-        >>> detector = MMD(sigma=1.0)
+        >>> detector = MMD()
         >>> X_ref = np.random.multivariate_normal([0, 0], np.eye(2), 500)
         >>> X_cur = np.random.multivariate_normal([0.3, 0.3], np.eye(2), 500)
         >>> result = detector.detect(X_ref, X_cur, permutation_test=True)
         >>> print(result)
+        MMDResult([DRIFT])
+          mmd:       0.0821
+          mmd_sq:    0.006741
+          p_value:   0.0100
+          threshold: 0.05
     """
     
     def __init__(
         self, 
         sigma: Optional[float] = None,
         kernel: Literal["rbf", "linear"] = "rbf"
-    ):
+    ) -> None:
+        if sigma is not None and sigma <= 0:
+            raise ValueError("sigma must be positive")
         self.sigma = sigma
         self.kernel = kernel
     
     def _rbf_kernel(self, X: np.ndarray, Y: np.ndarray, sigma: float) -> np.ndarray:
+        """Compute RBF (Gaussian) kernel matrix."""
         X_sqnorms = np.sum(X ** 2, axis=1, keepdims=True)
         Y_sqnorms = np.sum(Y ** 2, axis=1, keepdims=True)
         sq_distances = X_sqnorms + Y_sqnorms.T - 2 * X @ Y.T
+        sq_distances = np.maximum(sq_distances, 0)  # numerical stability
         return np.exp(-sq_distances / (2 * sigma ** 2))
     
     def _linear_kernel(self, X: np.ndarray, Y: np.ndarray) -> np.ndarray:
+        """Compute linear kernel matrix."""
         return X @ Y.T
     
     def _median_heuristic(self, X: np.ndarray, Y: np.ndarray) -> float:
+        """Compute bandwidth using median heuristic."""
         n_subsample = min(1000, len(X), len(Y))
-        X_sub = X[np.random.choice(len(X), n_subsample, replace=False)]
-        Y_sub = Y[np.random.choice(len(Y), n_subsample, replace=False)]
+        
+        rng = np.random.default_rng()
+        X_sub = X[rng.choice(len(X), n_subsample, replace=False)]
+        Y_sub = Y[rng.choice(len(Y), n_subsample, replace=False)]
         
         combined = np.vstack([X_sub, Y_sub])
-        sq_dists = np.sum(combined ** 2, axis=1, keepdims=True) + \
-                   np.sum(combined ** 2, axis=1) - 2 * combined @ combined.T
+        sq_dists = (
+            np.sum(combined ** 2, axis=1, keepdims=True) + 
+            np.sum(combined ** 2, axis=1) - 
+            2 * combined @ combined.T
+        )
         
         sq_dists = sq_dists[np.triu_indices_from(sq_dists, k=1)]
-        return np.sqrt(np.median(sq_dists[sq_dists > 0]))
+        sq_dists = sq_dists[sq_dists > 0]
+        
+        if len(sq_dists) == 0:
+            return 1.0  # fallback
+        
+        return float(np.sqrt(np.median(sq_dists)))
     
     def _compute_mmd_squared(
         self, 
@@ -86,6 +109,7 @@ class MMD:
         Y: np.ndarray, 
         sigma: float
     ) -> float:
+        """Compute unbiased estimate of MMD squared."""
         m, n = len(X), len(Y)
         
         if self.kernel == "rbf":
@@ -97,6 +121,7 @@ class MMD:
             K_YY = self._linear_kernel(Y, Y)
             K_XY = self._linear_kernel(X, Y)
         
+        # Zero out diagonals for unbiased estimate
         np.fill_diagonal(K_XX, 0)
         np.fill_diagonal(K_YY, 0)
         
@@ -106,7 +131,7 @@ class MMD:
             2 * np.sum(K_XY) / (m * n)
         )
         
-        return mmd_sq
+        return float(mmd_sq)
     
     def detect(
         self,
@@ -116,12 +141,31 @@ class MMD:
         n_permutations: int = 100,
         alpha: float = 0.05
     ) -> MMDResult:
-        reference = np.asarray(reference)
-        current = np.asarray(current)
+        """
+        Compute MMD and optionally perform permutation test.
+        
+        Args:
+            reference: Reference distribution samples
+            current: Current distribution samples
+            permutation_test: Whether to compute p-value via permutation
+            n_permutations: Number of permutations for p-value
+            alpha: Significance level for drift detection
+            
+        Returns:
+            MMDResult with MMD value, p-value, and drift detection flag
+        """
+        # Validate inputs - need at least 2 samples for unbiased MMD estimate
+        reference, current = validate_inputs(reference, current, min_samples=2)
         
         if reference.ndim == 1:
             reference = reference.reshape(-1, 1)
             current = current.reshape(-1, 1)
+        
+        m, n = len(reference), len(current)
+        
+        # Additional check for MMD computation
+        if m < 2 or n < 2:
+            raise ValueError("Need at least 2 samples in each distribution for MMD")
         
         sigma = self.sigma if self.sigma is not None else self._median_heuristic(reference, current)
         
@@ -129,26 +173,28 @@ class MMD:
         mmd = np.sqrt(max(0, mmd_squared))
         
         p_value = None
+        drift_detected = False
+        
         if permutation_test:
             combined = np.vstack([reference, current])
             n_ref = len(reference)
             
+            rng = np.random.default_rng()
             null_mmds = []
+            
             for _ in range(n_permutations):
-                perm = np.random.permutation(len(combined))
+                perm = rng.permutation(len(combined))
                 X_perm = combined[perm[:n_ref]]
                 Y_perm = combined[perm[n_ref:]]
                 null_mmd_sq = self._compute_mmd_squared(X_perm, Y_perm, sigma)
                 null_mmds.append(null_mmd_sq)
             
-            p_value = np.mean(np.array(null_mmds) >= mmd_squared)
+            p_value = float(np.mean(np.array(null_mmds) >= mmd_squared))
             drift_detected = p_value < alpha
-        else:
-            drift_detected = False
         
         return MMDResult(
-            mmd=mmd,
-            mmd_squared=mmd_squared,
+            mmd=float(mmd),
+            mmd_squared=float(mmd_squared),
             p_value=p_value,
             drift_detected=drift_detected,
             threshold=alpha
