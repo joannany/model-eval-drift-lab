@@ -11,13 +11,13 @@ from .psi import PSI
 from .mmd import MMD
 
 
-def print_header(text: str):
+def print_header(text: str) -> None:
     print("\n" + "=" * 60)
     print(f" {text}")
     print("=" * 60)
 
 
-def scenario_medical_imaging():
+def scenario_medical_imaging() -> None:
     print_header("SCENARIO: Medical Imaging - Scanner Calibration Drift")
     
     np.random.seed(42)
@@ -33,18 +33,18 @@ def scenario_medical_imaging():
     
     feature_names = ["pixel_intensity", "contrast_ratio"]
     
-    print("\n📊 KS Test (per feature):")
+    print("\n[KS Test] (per feature):")
     ks = KSTest(alpha=0.05)
     for name, result in ks.detect_multivariate(reference, current, feature_names).items():
         status = "DRIFT" if result.drift_detected else "OK"
         print(f"  {name}: p={result.p_value:.4f} [{status}]")
     
-    print("\n📊 PSI (per feature):")
+    print("\n[PSI] (per feature):")
     psi = PSI(n_bins=10)
     for name, result in psi.calculate_multivariate(reference, current, feature_names).items():
         print(f"  {name}: PSI={result.psi:.4f} [{result.drift_level}]")
     
-    print("\n📊 MMD (joint distribution):")
+    print("\n[MMD] (joint distribution):")
     mmd = MMD()
     result = mmd.detect(reference, current, n_permutations=100)
     p_str = f"{result.p_value:.4f}" if result.p_value is not None else "N/A"
@@ -52,7 +52,7 @@ def scenario_medical_imaging():
     print(f"  Verdict: {'DRIFT DETECTED' if result.drift_detected else 'No significant drift'}")
 
 
-def scenario_demographic_shift():
+def scenario_demographic_shift() -> None:
     print_header("SCENARIO: Credit Scoring - Demographic Drift")
     
     np.random.seed(123)
@@ -70,18 +70,18 @@ def scenario_demographic_shift():
     
     feature_names = ["income", "debt_ratio", "age"]
     
-    print("\n📊 KS Test (per feature):")
+    print("\n[KS Test] (per feature):")
     ks = KSTest(alpha=0.05)
     for name, result in ks.detect_multivariate(reference, current, feature_names).items():
         status = "DRIFT" if result.drift_detected else "OK"
         print(f"  {name}: p={result.p_value:.4f} [{status}]")
     
-    print("\n📊 PSI (per feature):")
+    print("\n[PSI] (per feature):")
     psi = PSI(n_bins=10)
     for name, result in psi.calculate_multivariate(reference, current, feature_names).items():
         print(f"  {name}: PSI={result.psi:.4f} [{result.drift_level}]")
     
-    print("\n📊 MMD (joint distribution):")
+    print("\n[MMD] (joint distribution):")
     mmd = MMD()
     result = mmd.detect(reference, current, n_permutations=100)
     p_str = f"{result.p_value:.4f}" if result.p_value is not None else "N/A"
@@ -89,7 +89,7 @@ def scenario_demographic_shift():
     print(f"  Verdict: {'DRIFT DETECTED' if result.drift_detected else 'No significant drift'}")
 
 
-def scenario_correlation_change():
+def scenario_correlation_change() -> None:
     print_header("SCENARIO: Fraud Detection - Correlation Drift (Tricky!)")
     
     np.random.seed(456)
@@ -116,20 +116,20 @@ def scenario_correlation_change():
     
     feature_names = ["txn_amount", "txn_frequency", "account_age"]
     
-    print("\n📊 KS Test (per feature):")
+    print("\n[KS Test] (per feature):")
     print("  (These SHOULD miss the drift - marginals are identical)")
     ks = KSTest(alpha=0.05)
     for name, result in ks.detect_multivariate(reference, current, feature_names).items():
         status = "DRIFT" if result.drift_detected else "OK"
         print(f"  {name}: p={result.p_value:.4f} [{status}]")
     
-    print("\n📊 PSI (per feature):")
+    print("\n[PSI] (per feature):")
     print("  (These SHOULD also miss it)")
     psi = PSI(n_bins=10)
     for name, result in psi.calculate_multivariate(reference, current, feature_names).items():
         print(f"  {name}: PSI={result.psi:.4f} [{result.drift_level}]")
     
-    print("\n📊 MMD (joint distribution):")
+    print("\n[MMD] (joint distribution):")
     print("  (This SHOULD catch the correlation change)")
     mmd = MMD()
     result = mmd.detect(reference, current, n_permutations=100)
@@ -138,11 +138,11 @@ def scenario_correlation_change():
     print(f"  Verdict: {'DRIFT DETECTED' if result.drift_detected else 'No significant drift'}")
 
 
-def main():
-    print("\n" + "█" * 60)
+def main() -> None:
+    print("\n" + "=" * 60)
     print(" DRIFT DETECTION DEMO")
-    print(" Tools for catching ML models before they fail silently in production")
-    print("█" * 60)
+    print(" Tools for catching ML models before they fail silently")
+    print("=" * 60)
     
     scenario_medical_imaging()
     scenario_demographic_shift()
@@ -162,7 +162,7 @@ Key takeaways:
    Use when features interact or subtle distribution shifts matter.
 
 Best practice in production systems:
-→ Use all three. Drift is multidimensional.
+-> Use all three. Drift is multidimensional.
 """)
 
 
